@@ -1,5 +1,6 @@
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const User = require("../model/user.model");
-const bcrypt = require("bcryptjs");
 
 const registerUser = async (req, res) => {
     const { name, role, email, password } = req.body;
@@ -12,15 +13,17 @@ const registerUser = async (req, res) => {
                 message: 'User Already Exist'
             });
         }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
+        
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        
         const newUser = new User({
             name,
             role,
             email,
             password: hashedPassword,
         });
+        console.log("5");
         console.log(newUser);
         await newUser.save();
 
@@ -52,10 +55,16 @@ const loginUser = async (req, res) => {
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
         if (isPasswordCorrect) {
+            const token = jwt.sign({ name: user.name, id: user._id },
+                "DeveloperSecretForEvaluationDoNotHardCodeLikeThisInRealLifeProductionApplications",
+                { expiresIn: "6h" }
+            )
+
             return res.status(200).send({
                 success: true,
                 message: 'Login Successful',
-                user,
+                role: user.role,
+                token
             });
         } else {
             return res.status(400).send({
